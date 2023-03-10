@@ -2,103 +2,104 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
-	"log"
+	"net/http"
 
+	dto "github.com/ddoyle2017/lo-gosh-of-wall-street/internal/dto"
 	rest "github.com/ddoyle2017/lo-gosh-of-wall-street/internal/rest"
 )
 
-type AuctionLength string
+const activeAuctionsEndpoint string = "/data/wow/connected-realm/1146/auctions"
 
-const (
-	SHORT     AuctionLength = "SHORT"
-	MEDIUM    AuctionLength = "MEDIUM"
-	LONG      AuctionLength = "LONG"
-	VERY_LONG AuctionLength = "VERY_LONG"
-)
+// const commoditiesEndpoint string = "/data/wow/auctions/commodities"
 
-type Modifier struct {
-	Type_ uint
-	Value uint
+type WarcraftAuctionAPI interface {
+	GetActiveAuctions() (dto.AuctionData, error)
 }
 
-type Item struct {
-	Id         uint
-	BonusLists []uint
-	Context    uint // The context an item was obtained in, e.g. mythic raid, dungeon, quest, etc.
-	Modifiers  []Modifier
+type RetailAuctionAPI struct {
+	httpClient rest.HttpClient
+	hostURL    string
 }
 
-type Auction struct {
-	Id        uint64
-	Buyout    uint64
-	Bid       uint64
-	Item      Item
-	Quantity  uint
-	UnitPrice uint64
-	TimeLeft  AuctionLength
-}
-
-type AuctionData struct {
-	Auctions []Auction
-}
-
-type WarcraftAuctionApi interface {
-	GetActiveAuctions() AuctionData
-}
-
-type RetailAuctionApi struct {
-	httpClient       rest.HttpClient
-	auctionsEndpoint string
-}
-
-func NewRetailAuctionApi(httpClient rest.HttpClient, auctionsEndpoint string) *RetailAuctionApi {
-	return &RetailAuctionApi{
-		httpClient:       httpClient,
-		auctionsEndpoint: auctionsEndpoint,
+func NewRetailAuctionAPI(httpClient rest.HttpClient, hostURL string) *RetailAuctionAPI {
+	return &RetailAuctionAPI{
+		httpClient: httpClient,
+		hostURL:    hostURL,
 	}
 }
 
-func (r RetailAuctionApi) GetActiveAuctions() (auctions AuctionData) {
-	response, err := r.httpClient.Get(r.auctionsEndpoint)
-	handleError(err)
+func (r RetailAuctionAPI) GetActiveAuctions() (auctions dto.AuctionData, err error) {
+	request, err := buildRequest(http.MethodGet, r.hostURL+activeAuctionsEndpoint)
+	if err != nil {
+		return auctions, fmt.Errorf("could not build Retail WoW Auctions API request")
+	}
+
+	response, err := r.httpClient.Do(request)
+	if err != nil {
+		return auctions, fmt.Errorf("error when calling Retail WoW Auctions API")
+	}
+	if response.StatusCode != http.StatusOK {
+		return auctions, fmt.Errorf("retail WoW Auctions API returned a %d", response.StatusCode)
+	}
+	defer response.Body.Close()
 
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatal(err)
+		return auctions, fmt.Errorf("could parse Retail WoW Auctions API response body")
 	}
 
 	json.Unmarshal(data, &auctions)
-	return
+	return auctions, nil
 }
 
 type ClassicAuctionApi struct {
-	httpClient       rest.HttpClient
-	auctionsEndpoint string
+	httpClient rest.HttpClient
+	hostURL    string
 }
 
-func NewClassicAuctionApi(httpClient rest.HttpClient, auctionsEndpoint string) *ClassicAuctionApi {
+func NewClassicAuctionApi(httpClient rest.HttpClient, hostURL string) *ClassicAuctionApi {
 	return &ClassicAuctionApi{
-		httpClient:       httpClient,
-		auctionsEndpoint: auctionsEndpoint,
+		httpClient: httpClient,
+		hostURL:    hostURL,
 	}
 }
 
-func (r ClassicAuctionApi) GetActiveAuctions() (auctions AuctionData) {
-	response, err := r.httpClient.Get(r.auctionsEndpoint)
-	handleError(err)
+func (r ClassicAuctionApi) GetActiveAuctions() (auctions dto.AuctionData, err error) {
+	request, err := buildRequest(http.MethodGet, r.hostURL+activeAuctionsEndpoint)
+	if err != nil {
+		return auctions, fmt.Errorf("could not build Classic WoW Auctions API request")
+	}
+
+	response, err := r.httpClient.Do(request)
+	if err != nil {
+		return auctions, fmt.Errorf("error when calling Classic WoW Auctions API")
+	}
+	if response.StatusCode != http.StatusOK {
+		return auctions, fmt.Errorf("clasic WoW Auctions API returned a %d", response.StatusCode)
+	}
+	defer response.Body.Close()
 
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatal(err)
+		return auctions, fmt.Errorf("could parse Classic WoW Auctions API response body")
 	}
 
 	json.Unmarshal(data, &auctions)
-	return
+	return auctions, nil
 }
 
-func handleError(err error) {
+// Builds out a Blizzard API request + headers, including the correct authorization
+func buildRequest(method string, url string) (request *http.Request, err error) {
+	request, err = http.NewRequest(method, url, nil)
 	if err != nil {
-		log.Fatal("World of Warcraft API returned an error")
+		return nil, err
 	}
+
+	// TODO get OAuth token from Blizzard API auth endpoint
+
+	request.Header.Add("Accept", `application/json`)
+	request.Header.Add("Authorization", "")
+	return request, nil
 }
