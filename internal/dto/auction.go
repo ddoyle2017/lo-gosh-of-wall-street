@@ -1,4 +1,4 @@
-package app
+package dto
 
 type AuctionLength string
 
@@ -23,7 +23,7 @@ type Item struct {
 
 type Auction struct {
 	Id        uint64
-	Buyout    uint64
+	Buyout    uint64 // An optional price set that wins the auction automatically if a buyer pays it
 	Bid       uint64
 	Item      Item
 	Quantity  uint
