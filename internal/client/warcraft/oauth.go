@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -20,7 +21,7 @@ type BlizzardOAuth struct {
 	clientSecret string
 }
 
-func (o BlizzardOAuth) NewBlizzardOAuth(httpClient rest.HttpClient, hostURL, clientID, clientSecret string) *BlizzardOAuth {
+func NewBlizzardOAuth(httpClient rest.HttpClient, hostURL, clientID, clientSecret string) *BlizzardOAuth {
 	return &BlizzardOAuth{
 		httpClient:   httpClient,
 		hostURL:      hostURL,
@@ -52,5 +53,6 @@ func (o BlizzardOAuth) getAuthToken() (token dto.AuthToken, err error) {
 	}
 
 	json.Unmarshal(data, &token)
+	log.Println("MY TOKEN RESPONSE WAS: ", token)
 	return token, nil
 }

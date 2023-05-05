@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 
-	client "github.com/ddoyle2017/lo-gosh-of-wall-street/internal/client"
+	warcraft "github.com/ddoyle2017/lo-gosh-of-wall-street/internal/client/warcraft"
 	dto "github.com/ddoyle2017/lo-gosh-of-wall-street/internal/dto"
 )
 
@@ -15,16 +16,17 @@ type Controller interface {
 }
 
 type controller struct {
-	auctionAPI client.WarcraftAuctionAPI
+	auctionAPI warcraft.AuctionAPI
 }
 
-func NewController(a client.WarcraftAuctionAPI) Controller { return controller{auctionAPI: a} }
+func NewController(a warcraft.AuctionAPI) Controller { return controller{auctionAPI: a} }
 
 func (c controller) ListTopAuctions(ctx context.Context, ranking int) (auctions []dto.Auction, err error) {
 
 	// Get auction data
 	auctionData, err := c.auctionAPI.GetActiveAuctions()
 	if err != nil {
+		log.Println(err)
 		return nil, fmt.Errorf("WoW API call failed")
 	}
 	auctions = auctionData.Auctions

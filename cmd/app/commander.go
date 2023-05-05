@@ -16,6 +16,15 @@ type Commander struct {
 
 func NewCommander(c Controller) Commander { return Commander{controller: c} }
 
+func (c Commander) Handler() http.Handler {
+	router := chi.NewRouter()
+
+	router.Route("/auctions", func(r chi.Router) {
+		r.Get("/{ranking}", http.HandlerFunc(c.GetTopAuctions))
+	})
+	return router
+}
+
 func (c Commander) GetTopAuctions(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

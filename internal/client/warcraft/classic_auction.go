@@ -12,18 +12,25 @@ import (
 
 type ClassicAuctionApi struct {
 	httpClient rest.HttpClient
+	oauth      *BlizzardOAuth
 	hostURL    string
 }
 
-func NewClassicAuctionApi(httpClient rest.HttpClient, hostURL string) *ClassicAuctionApi {
+func NewClassicAuctionApi(httpClient rest.HttpClient, oauth *BlizzardOAuth, hostURL string) *ClassicAuctionApi {
 	return &ClassicAuctionApi{
 		httpClient: httpClient,
+		oauth:      oauth,
 		hostURL:    hostURL,
 	}
 }
 
 func (r ClassicAuctionApi) GetActiveAuctions() (auctions dto.AuctionData, err error) {
-	request, err := buildRequest(http.MethodGet, r.hostURL+activeAuctionsEndpoint)
+	token, err := r.oauth.getAuthToken()
+	if err != nil {
+		return auctions, fmt.Errorf("could not authenticate to Classic WoW Auctions API")
+	}
+
+	request, err := buildRequest(http.MethodGet, r.hostURL+activeAuctionsEndpoint, token)
 	if err != nil {
 		return auctions, fmt.Errorf("could not build Classic WoW Auctions API request")
 	}

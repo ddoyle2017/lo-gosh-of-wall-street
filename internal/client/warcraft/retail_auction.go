@@ -12,18 +12,25 @@ import (
 
 type RetailAuctionAPI struct {
 	httpClient rest.HttpClient
+	oauth      *BlizzardOAuth
 	hostURL    string
 }
 
-func NewRetailAuctionAPI(httpClient rest.HttpClient, hostURL string) *RetailAuctionAPI {
+func NewRetailAuctionAPI(httpClient rest.HttpClient, oauth *BlizzardOAuth, hostURL string) *RetailAuctionAPI {
 	return &RetailAuctionAPI{
 		httpClient: httpClient,
+		oauth:      oauth,
 		hostURL:    hostURL,
 	}
 }
 
 func (r RetailAuctionAPI) GetActiveAuctions() (auctions dto.AuctionData, err error) {
-	request, err := buildRequest(http.MethodGet, r.hostURL+activeAuctionsEndpoint)
+	token, err := r.oauth.getAuthToken()
+	if err != nil {
+		return auctions, fmt.Errorf("could not authenticate to Retail WoW Auctions API")
+	}
+
+	request, err := buildRequest(http.MethodGet, r.hostURL+activeAuctionsEndpoint, token)
 	if err != nil {
 		return auctions, fmt.Errorf("could not build Retail WoW Auctions API request")
 	}
@@ -39,7 +46,7 @@ func (r RetailAuctionAPI) GetActiveAuctions() (auctions dto.AuctionData, err err
 
 	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return auctions, fmt.Errorf("could parse Retail WoW Auctions API response body")
+		return auctions, fmt.Errorf("could not parse Retail WoW Auctions API response body")
 	}
 
 	json.Unmarshal(data, &auctions)
